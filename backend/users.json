@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "email": "ashrajinnah@gmail.com",
+    "role": "client",
+    "is_active": 1
+  },
+  {
+    "id": 4,
+    "email": "fathimaashra0702@gmail.com",
+    "role": "admin",
+    "is_active": 1
+  },
+  {
+    "id": 5,
+    "email": "ash.jf07@gmail.com",
+    "role": "lawyer",
+    "is_active": 1
+  },
+  {
+    "id": 6,
+    "email": "mailtoashra@gmail.com",
+    "role": "client",
+    "is_active": 0
+  }
+]
