@@ -111,6 +111,8 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
       });
       toast.success('Password updated successfully');
       setPasswords({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+      const dashRoute = user.role === 'admin' ? 'admin-dashboard' : (user.role === 'lawyer' ? 'lawyer-dashboard' : 'client-dashboard');
+      onNavigate(dashRoute);
     } catch (error) {
       toast.error(error.error || 'Failed to update password');
     } finally {
@@ -127,7 +129,7 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
         </div>
 
         {/* Change Password Container */}
-        <Card className="border-none shadow-sm overflow-hidden">
+        <Card className="border-none shadow-sm mb-12">
           <CardHeader className="bg-white border-b border-gray-100">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-blue-50 rounded-lg">
@@ -140,60 +142,71 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
             </div>
           </CardHeader>
           <CardContent className="p-6 bg-white/50">
-            <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-2xl">
-              <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                <Label className="text-right hidden md:block">Current Password:</Label>
-                <div className="md:col-span-2 relative">
-                  <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <Input 
-                    type="password" 
-                    placeholder="Current password" 
-                    className="pl-10"
-                    value={passwords.currentPassword}
-                    onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})}
-                    required
-                  />
+            <form onSubmit={handlePasswordUpdate} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+                <div className="space-y-2">
+                  <Label className="font-semibold text-[#0A2342]">Current Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <Input 
+                      type="password" 
+                      placeholder="Enter current password" 
+                      className="pl-10 h-11 border-gray-200 focus:border-[#5B9BD5] transition-all"
+                      value={passwords.currentPassword}
+                      onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden md:block"></div> {/* Spacer for grid */}
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-[#0A2342]">New Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <Input 
+                      type="password" 
+                      placeholder="Enter new password" 
+                      className="pl-10 h-11 border-gray-200 focus:border-[#5B9BD5] transition-all"
+                      value={passwords.newPassword}
+                      onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-[#0A2342]">Confirm New Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <Input 
+                      type="password" 
+                      placeholder="Repeat new password" 
+                      className="pl-10 h-11 border-gray-200 focus:border-[#5B9BD5] transition-all"
+                      value={passwords.confirmNewPassword}
+                      onChange={(e) => setPasswords({...passwords, confirmNewPassword: e.target.value})}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                <Label className="text-right hidden md:block">New Password:</Label>
-                <div className="md:col-span-2 relative">
-                  <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <Input 
-                    type="password" 
-                    placeholder="New password" 
-                    className="pl-10"
-                    value={passwords.newPassword}
-                    onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                <Label className="text-right hidden md:block">Confirm New Password:</Label>
-                <div className="md:col-span-2 relative">
-                  <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <Input 
-                    type="password" 
-                    placeholder="Confirm new password" 
-                    className="pl-10"
-                    value={passwords.confirmNewPassword}
-                    onChange={(e) => setPasswords({...passwords, confirmNewPassword: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={loading} className="bg-[#5B9BD5] hover:bg-[#4A8AC4] text-white px-8">
-                  Update
-                </Button>
+
+              <div className="mt-6 pt-6 border-t border-gray-100 flex justify-start md:justify-end">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-[#0A2342] hover:bg-[#143255] text-white px-8 py-2 rounded-lg font-semibold shadow-md transition-all disabled:opacity-50"
+                >
+                  {loading ? 'Updating...' : 'Update Password'}
+                </button>
               </div>
             </form>
           </CardContent>
         </Card>
 
         {/* Personal Information Container */}
-        <Card className="border-none shadow-sm overflow-hidden">
+        <Card className="border-none shadow-sm pb-10">
           <CardHeader className="bg-white border-b border-gray-100">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-green-50 rounded-lg">
