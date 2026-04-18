@@ -3,10 +3,9 @@ const pool = require('../config/db');
 // LAWYER PROFILES
 const getLawyerProfile = async (req, res) => {
     try {
-        let lawyerId = req.params.id;
-        if (!lawyerId && req.user && req.user.role === 'lawyer') {
-            lawyerId = req.user.id;
-        }
+        // Force lawyerId to req.user.id unless admin or it's a public GET view
+        // Note: For public viewing (GET), we allow params.id. For mutations, we force.
+        const lawyerId = req.params.id || (req.user && req.user.id);
 
         if (!lawyerId) {
             return res.status(400).json({ error: 'Lawyer ID required' });
@@ -23,10 +22,7 @@ const getLawyerProfile = async (req, res) => {
 
 const updateLawyerProfile = async (req, res) => {
     try {
-        let lawyerId = req.params.id;
-        if (!lawyerId && req.user && req.user.role === 'lawyer') {
-            lawyerId = req.user.id;
-        }
+        const lawyerId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
 
         const { bar_registration, license_number, experience_years, education, bio, consultation_fee, availability_status } = req.body;
 
@@ -146,10 +142,8 @@ const setLawyerAvailability = async (req, res) => {
 // CLIENT PROFILES
 const getClientProfile = async (req, res) => {
     try {
-        let clientId = req.params.id;
-        if (!clientId && req.user && req.user.role === 'client') {
-            clientId = req.user.id;
-        }
+        // Force clientId to req.user.id unless admin
+        const clientId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
 
         if (!clientId) return res.status(400).json({ error: 'Client ID required' });
 
@@ -164,10 +158,8 @@ const getClientProfile = async (req, res) => {
 
 const updateClientProfile = async (req, res) => {
     try {
-        let clientId = req.params.id;
-        if (!clientId && req.user && req.user.role === 'client') {
-            clientId = req.user.id;
-        }
+        // Force clientId to req.user.id unless admin
+        const clientId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
 
         const { phone, address, city, state, postal_code, date_of_birth, occupation, company_name } = req.body;
 

@@ -27,10 +27,31 @@ const register = async (req, res) => {
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         const passwordHash = await bcrypt.hash(password, 10);
-        const [result] = await pool.execute(
-            'INSERT INTO users (name, email, password_hash, role, is_active, verification_code, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [name, email.toLowerCase(), passwordHash, role, false, verificationCode, expiresAt]
-        );
+
+        // Check if user already exists
+        const [existingUsers] = await pool.execute('SELECT id, is_active FROM users WHERE email = ?', [email.toLowerCase()]);
+
+        if (existingUsers.length > 0) {
+            const existingUser = existingUsers[0];
+            
+            // If account is already active, prevent re-registration
+            if (existingUser.is_active) {
+                return res.status(400).json({ error: 'Email already registered' });
+            }
+            
+            // If account is NOT active, update it with new details and a new verification code
+            // This allows the user to "re-register" if they got stuck or didn't get the email
+            await pool.execute(
+                'UPDATE users SET name = ?, password_hash = ?, verification_code = ?, verification_expires_at = ? WHERE id = ?',
+                [name, passwordHash, verificationCode, expiresAt, existingUser.id]
+            );
+        } else {
+            // Normal registration for a completely new email
+            await pool.execute(
+                'INSERT INTO users (name, email, password_hash, role, is_active, verification_code, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [name, email.toLowerCase(), passwordHash, role, false, verificationCode, expiresAt]
+            );
+        }
 
         try {
             await sendVerificationEmail(email.toLowerCase(), verificationCode);

@@ -4,8 +4,8 @@ const adminController = require('../controllers/adminController');
 const { authenticateToken, authorizeRole } = require('../middleware/authMiddleware');
 
 // All admin routes are protected and require 'admin' role
-// router.use(authenticateToken);  // TODO: Verify if frontend sends token, if not we might bypass temporarily or fix frontend
-// router.use(authorizeRole(['admin']));
+router.use(authenticateToken);
+router.use(authorizeRole(['admin']));
 
 router.post('/users', adminController.createUser);
 router.get('/users', adminController.getAllUsers);

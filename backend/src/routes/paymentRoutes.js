@@ -3,12 +3,16 @@ const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
 const paymentController = require('../controllers/paymentController');
+const { authenticateToken } = require('../middleware/authMiddleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads/';
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir);
 }
+
+// Apply authentication to ALL payment routes
+router.use(authenticateToken);
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {

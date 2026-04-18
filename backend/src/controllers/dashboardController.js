@@ -15,7 +15,8 @@ const getAdminStats = async (req, res) => {
 
 const getLawyerStats = async (req, res) => {
     try {
-        const lawyerId = req.user ? req.user.id : req.query.lawyer_id;
+        // If admin, they can pass lawyer_id. If lawyer, force their own ID.
+        const lawyerId = (req.user.role === 'admin' && req.query.lawyer_id) ? req.query.lawyer_id : req.user.id;
         
         const [[{ active_cases }]] = await pool.execute("SELECT COUNT(*) as active_cases FROM cases WHERE lawyer_id = ? AND status NOT IN ('closed', 'won', 'lost', 'settled')", [lawyerId]);
         const [[{ upcoming_appointments }]] = await pool.execute("SELECT COUNT(*) as upcoming_appointments FROM appointments WHERE lawyer_id = ? AND appointment_date >= CURDATE() AND status IN ('pending', 'confirmed')", [lawyerId]);
@@ -29,7 +30,8 @@ const getLawyerStats = async (req, res) => {
 
 const getClientStats = async (req, res) => {
     try {
-        const clientId = req.user ? req.user.id : req.query.client_id;
+        // If admin, they can pass client_id. If client, force their own ID.
+        const clientId = (req.user.role === 'admin' && req.query.client_id) ? req.query.client_id : req.user.id;
         
         const [[{ active_cases }]] = await pool.execute("SELECT COUNT(*) as active_cases FROM cases WHERE client_id = ? AND status NOT IN ('closed', 'won', 'lost', 'settled')", [clientId]);
         const [[{ upcoming_appointments }]] = await pool.execute("SELECT COUNT(*) as upcoming_appointments FROM appointments WHERE client_id = ? AND appointment_date >= CURDATE() AND status IN ('pending', 'confirmed')", [clientId]);

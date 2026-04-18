@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// router.use(authenticateToken); // Enable later
+router.use(authenticateToken); 
 
 router.post('/upload', upload.single('document'), documentController.uploadDocument);
 router.get('/', documentController.getDocuments);

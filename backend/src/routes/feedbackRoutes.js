@@ -3,12 +3,16 @@ const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
 const feedbackController = require('../controllers/feedbackController');
+const { authenticateToken } = require('../middleware/authMiddleware');
 
 // Ensure uploads directory exists
 const uploadDir = 'uploads/';
 if (!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir);
 }
+
+// Apply authentication to ALL feedback routes
+router.use(authenticateToken);
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
