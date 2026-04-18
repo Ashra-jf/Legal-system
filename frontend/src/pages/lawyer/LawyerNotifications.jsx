@@ -6,7 +6,7 @@ import { Bell, Calendar, FileText, User, Trash2, CheckCheck } from 'lucide-react
 import { notificationService } from '../../api/notificationService';
 import { toast } from 'sonner@2.0.3';
 
-export default function LawyerNotifications({ lawyerId }) {
+export default function LawyerNotifications({ lawyerId, onRefresh }) {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function LawyerNotifications({ lawyerId }) {
           notif.id === id ? { ...notif, is_read: true } : notif
         )
       );
+      if (onRefresh) onRefresh();
     } catch (e) {
       toast.error('Failed to mark read');
     }
@@ -62,6 +63,7 @@ export default function LawyerNotifications({ lawyerId }) {
       setNotifications(
         notifications.map((notif) => ({ ...notif, is_read: true }))
       );
+      if (onRefresh) onRefresh();
       toast.success('All marked as read');
     } catch (e) {
       toast.error('Failed to mark all as read');

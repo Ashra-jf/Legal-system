@@ -18,6 +18,24 @@ const getUserNotifications = async (req, res) => {
     }
 };
 
+const getUnreadCount = async (req, res) => {
+    try {
+        const rawUserId = req.user ? req.user.id : req.query.user_id;
+        const p_userId = rawUserId === undefined ? null : rawUserId;
+
+        if (p_userId === null) return res.status(400).json({ error: 'User ID required' });
+
+        const [rows] = await pool.execute(
+            'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE', 
+            [p_userId]
+        );
+        res.json({ count: rows[0].count });
+    } catch (error) {
+        console.error('Get Unread Count Error:', error);
+        res.status(500).json({ error: 'Failed to fetch unread count', details: error.message });
+    }
+};
+
 const markAsRead = async (req, res) => {
     try {
         const notificationId = req.params.id === undefined ? null : req.params.id;
@@ -86,6 +104,7 @@ const broadcastNotification = async (req, res) => {
 
 module.exports = {
     getUserNotifications,
+    getUnreadCount,
     markAsRead,
     createNotification,
     broadcastNotification

@@ -8,9 +8,11 @@ import AdminPaymentMonitoring from './admin/AdminPaymentMonitoring';
 import AdminFeedbackReview from './admin/AdminFeedbackReview';
 import AdminNotifications from './admin/AdminNotifications';
 import AdminAnalytics from './admin/AdminAnalytics';
+import { useNotifications } from '../hooks/useNotifications';
 
 export default function AdminDashboard({ user, onLogout, onNavigate }) {
   const [currentView, setCurrentView] = useState('analytics');
+  const { unreadCount, refresh } = useNotifications(user.id);
 
   const menuItems = [
     { id: 'analytics', label: 'Analytics & Reports', icon: BarChart },
@@ -35,7 +37,7 @@ export default function AdminDashboard({ user, onLogout, onNavigate }) {
       case 'feedback':
         return <AdminFeedbackReview />;
       case 'notifications':
-        return <AdminNotifications />;
+        return <AdminNotifications onRefresh={refresh} />;
       case 'analytics':
         return <AdminAnalytics />;
       default:
@@ -75,7 +77,7 @@ export default function AdminDashboard({ user, onLogout, onNavigate }) {
       onNavigate={onNavigate}
       sidebar={sidebar}
       onNotificationClick={() => setCurrentView('notifications')}
-      notificationCount={5}
+      notificationCount={unreadCount}
     >
       {renderContent()}
     </DashboardLayout>

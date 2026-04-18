@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Bell, Calendar, CreditCard, FileText, Trash2, CheckCheck, Loader2 } from 'lucide-react';
 import { notificationService } from '../../api/notificationService';
 
-export default function ClientNotifications({ userId }) {
+export default function ClientNotifications({ userId, onRefresh }) {
   const [notifications, setNotifications] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -52,15 +52,24 @@ export default function ClientNotifications({ userId }) {
           notif.id === id ? { ...notif, read: true, is_read: 1 } : notif
         )
       );
+      if (onRefresh) onRefresh();
     } catch(e) {
       console.error('Failed to mark as read', e);
     }
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(
-      notifications.map((notif) => ({ ...notif, read: true }))
-    );
+  const handleMarkAllAsRead = async () => {
+    try {
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      await Promise.all(unreadIds.map(id => notificationService.markAsRead(id)));
+      
+      setNotifications(
+        notifications.map((notif) => ({ ...notif, read: true }))
+      );
+      if (onRefresh) onRefresh();
+    } catch(e) {
+      console.error('Failed to mark all as read', e);
+    }
   };
 
   const handleDelete = (id) => {

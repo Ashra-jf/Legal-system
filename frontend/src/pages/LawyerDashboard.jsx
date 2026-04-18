@@ -5,9 +5,11 @@ import LawyerAppointments from './lawyer/LawyerAppointments';
 import LawyerCaseUpdates from './lawyer/LawyerCaseUpdates';
 import LawyerClientFeedback from './lawyer/LawyerClientFeedback';
 import LawyerNotifications from './lawyer/LawyerNotifications';
+import { useNotifications } from '../hooks/useNotifications';
 
 export default function LawyerDashboard({ user, onLogout, onNavigate }) {
   const [currentView, setCurrentView] = useState('appointments');
+  const { unreadCount, refresh } = useNotifications(user.id);
 
   const menuItems = [
     { id: 'appointments', label: 'My Appointments', icon: Calendar },
@@ -25,7 +27,7 @@ export default function LawyerDashboard({ user, onLogout, onNavigate }) {
       case 'feedback':
         return <LawyerClientFeedback lawyerId={user.id} />;
       case 'notifications':
-        return <LawyerNotifications lawyerId={user.id} />;
+        return <LawyerNotifications lawyerId={user.id} onRefresh={refresh} />;
       default:
         return <LawyerAppointments lawyerId={user.id} lawyerName={user.name} />;
     }
@@ -63,7 +65,7 @@ export default function LawyerDashboard({ user, onLogout, onNavigate }) {
       onNavigate={onNavigate}
       sidebar={sidebar}
       onNotificationClick={() => setCurrentView('notifications')}
-      notificationCount={2}
+      notificationCount={unreadCount}
     >
       {renderContent()}
     </DashboardLayout>

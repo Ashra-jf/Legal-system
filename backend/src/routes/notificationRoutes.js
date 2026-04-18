@@ -5,6 +5,7 @@ const { authenticateToken } = require('../middleware/authMiddleware');
 
 router.use(authenticateToken);
 
+router.get('/live-unread-count', notificationController.getUnreadCount);
 router.get('/', notificationController.getUserNotifications);
 router.post('/broadcast', notificationController.broadcastNotification);
 router.patch('/:id/read', notificationController.markAsRead);

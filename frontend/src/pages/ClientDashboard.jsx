@@ -8,9 +8,11 @@ import ClientCaseStatus from './client/ClientCaseStatus';
 import ClientPayments from './client/ClientPayments';
 import ClientFeedback from './client/ClientFeedback';
 import ClientNotifications from './client/ClientNotifications';
+import { useNotifications } from '../hooks/useNotifications';
 
 export default function ClientDashboard({ user, onLogout, onNavigate }) {
   const [currentView, setCurrentView] = useState('overview');
+  const { unreadCount, refresh } = useNotifications(user.id);
 
   const menuItems = [
     { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard },
@@ -37,7 +39,7 @@ export default function ClientDashboard({ user, onLogout, onNavigate }) {
       case 'feedback':
         return <ClientFeedback userId={user.id} />;
       case 'notifications':
-        return <ClientNotifications userId={user.id} />;
+        return <ClientNotifications userId={user.id} onRefresh={refresh} />;
       default:
         return <ClientOverview onNavigate={setCurrentView} userId={user.id} />;
     }
@@ -75,7 +77,7 @@ export default function ClientDashboard({ user, onLogout, onNavigate }) {
       onNavigate={onNavigate}
       sidebar={sidebar}
       onNotificationClick={() => setCurrentView('notifications')}
-      notificationCount={3}
+      notificationCount={unreadCount}
     >
       {renderContent()}
     </DashboardLayout>
