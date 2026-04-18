@@ -3,11 +3,12 @@ const pool = require('../config/db');
 // LAWYER PROFILES
 const getLawyerProfile = async (req, res) => {
     try {
-        // Force lawyerId to req.user.id unless admin or it's a public GET view
-        // Note: For public viewing (GET), we allow params.id. For mutations, we force.
-        const lawyerId = req.params.id || (req.user && req.user.id);
+        const idParam = req.params.id;
+        const lawyerId = (idParam === 'me' || !idParam) ? req.user.id : idParam;
+        
+        const p_lawyerId = lawyerId === undefined ? null : lawyerId;
 
-        if (!lawyerId) {
+        if (p_lawyerId === null) {
             return res.status(400).json({ error: 'Lawyer ID required' });
         }
 
@@ -19,51 +20,198 @@ const getLawyerProfile = async (req, res) => {
             LEFT JOIN lawyer_profiles lp ON u.id = lp.lawyer_id
             LEFT JOIN lawyer_statistics ls ON u.id = ls.lawyer_id
             WHERE u.id = ? AND u.role = 'lawyer'
-        `, [lawyerId]);
+        `, [p_lawyerId]);
+        
         if (rows.length === 0) return res.status(404).json({ error: 'Lawyer not found' });
 
         res.json(rows[0]);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Get Lawyer Profile Error:', error);
+        res.status(500).json({ error: 'Failed to fetch lawyer profile', details: error.message });
     }
 };
 
 const updateLawyerProfile = async (req, res) => {
     try {
-        const lawyerId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
+        const idParam = req.params.id;
+        const lawyerId = (idParam === 'me' || !idParam) ? req.user.id : idParam;
 
-        const { name, bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status } = req.body;
+        // Sanitize incoming data: convert empty strings to null
+        const sanitized = {};
+        Object.keys(req.body).forEach(key => {
+            sanitized[key] = req.body[key] === '' ? null : req.body[key];
+        });
+
+        const { 
+            name, 
+            bar_registration = null, 
+            license_number = null, 
+            firm_role = null, 
+            jurisdiction = null, 
+            id_number = null, 
+            gender = null, 
+            marital_status = null, 
+            phone = null, 
+            alternate_phone = null, 
+            address = null, 
+            city = null, 
+            state = null, 
+            postal_code = null, 
+            date_of_birth = null, 
+            experience_years: rawExp = 0, 
+            education = null, 
+            bio = null, 
+            consultation_fee: rawFee = 0, 
+            availability_status = 'available' 
+        } = sanitized;
+
+        // Final numeric sanitization (handle NaN)
+        const experience_years = isNaN(parseInt(rawExp)) ? 0 : parseInt(rawExp);
+        const consultation_fee = isNaN(parseFloat(rawFee)) ? 0 : parseFloat(rawFee);
+
+        // Final safety check: Ensure NO value is undefined before passing to SQL
+        const p_lawyerId = lawyerId === undefined ? null : lawyerId;
+        const p_name = name === undefined ? null : name;
 
         // Update name in users table if provided
-        if (name) {
-            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [name, lawyerId]);
+        if (p_name) {
+            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [p_name, p_lawyerId]);
         }
 
         // Check if lawyer profile exists
-        const [existing] = await pool.execute('SELECT id FROM lawyer_profiles WHERE lawyer_id = ?', [lawyerId]);
+        const [existing] = await pool.execute('SELECT id FROM lawyer_profiles WHERE lawyer_id = ?', [p_lawyerId]);
 
+        // Dynamic Update: Only update fields that are actually sent in req.body
         if (existing.length === 0) {
-            // Insert
+            // Insert - same as before but use sanitized object for defaults
+            const insertParams = [p_lawyerId, bar_registration, license_number, firm_role, jurisdiction, id_number, gender, marital_status, phone, alternate_phone, address, city, state, postal_code, date_of_birth, experience_years, education, bio, consultation_fee, availability_status]
+                .map(val => val === undefined ? null : val);
+
             await pool.execute(
                 `INSERT INTO lawyer_profiles 
-                (lawyer_id, bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [lawyerId, bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status]
+                (lawyer_id, bar_registration, license_number, firm_role, jurisdiction, id_number, gender, marital_status, phone, alternate_phone, address, city, state, postal_code, date_of_birth, experience_years, education, bio, consultation_fee, availability_status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                insertParams
             );
         } else {
-            // Update
-            await pool.execute(
-                `UPDATE lawyer_profiles SET 
-                bar_registration = ?, license_number = ?, id_number = ?, gender = ?, marital_status = ?, alternate_phone = ?, 
-                experience_years = ?, education = ?, bio = ?, consultation_fee = ?, availability_status = ?
-                WHERE lawyer_id = ?`,
-                [bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status, lawyerId]
-            );
+            // Update - only fields present in req.body
+            const updateFields = [];
+            const updateValues = [];
+
+            // List of potential columns
+            const columns = [
+                'bar_registration', 'license_number', 'firm_role', 'jurisdiction', 'id_number', 'gender', 'marital_status', 
+                'phone', 'alternate_phone', 'address', 'city', 'state', 'postal_code', 'date_of_birth', 
+                'experience_years', 'education', 'bio', 'consultation_fee', 'availability_status'
+            ];
+
+            columns.forEach(col => {
+                if (req.body[col] !== undefined) {
+                    updateFields.push(`${col} = ?`);
+                    // Sanitize empty strings to null
+                    let val = req.body[col] === '' ? null : req.body[col];
+                    // Handle numbers
+                    if (col === 'experience_years' || col === 'consultation_fee') {
+                        val = isNaN(parseFloat(val)) ? 0 : parseFloat(val);
+                    }
+                    updateValues.push(val);
+                }
+            });
+
+            if (updateFields.length > 0) {
+                updateValues.push(p_lawyerId);
+                const sql = `UPDATE lawyer_profiles SET ${updateFields.join(', ')} WHERE lawyer_id = ?`;
+                await pool.execute(sql, updateValues);
+            }
         }
 
         res.json({ message: 'Lawyer profile updated successfully' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Lawyer Profile Update Error:', error);
+        res.status(500).json({ 
+            error: 'Failed to update lawyer profile', 
+            details: error.message,
+            code: error.code
+        });
+    }
+};
+
+const uploadDocument = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const { title, case_id, appointment_id, payment_id, description } = req.body;
+        const rawUploadedBy = req.user ? req.user.id : 1;
+        const uploaded_by = rawUploadedBy === undefined ? null : rawUploadedBy;
+
+        // Enforce at most one entity reference constraint
+        const entitiesCount = (case_id ? 1 : 0) + (appointment_id ? 1 : 0) + (payment_id ? 1 : 0);
+        if (entitiesCount > 1) {
+            return res.status(400).json({ error: 'Document can only belong to one entity type (case, appointment, or payment)' });
+        }
+
+        const filePath = req.file.path;
+        const fileType = req.file.mimetype;
+        const fileSize = req.file.size;
+
+        const params = [
+            title || req.file.originalname, 
+            filePath, 
+            fileType, 
+            fileSize, 
+            uploaded_by, 
+            case_id === undefined ? null : case_id, 
+            appointment_id === undefined ? null : appointment_id, 
+            payment_id === undefined ? null : payment_id, 
+            description === undefined ? null : description
+        ].map(v => v === undefined ? null : v);
+
+        const [result] = await pool.execute(
+            `INSERT INTO documents 
+            (title, file_path, file_type, file_size, uploaded_by, case_id, appointment_id, payment_id, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            params
+        );
+        res.status(201).json({ id: result.insertId, message: 'Document uploaded successfully', filePath });
+    } catch (error) {
+        console.error('Upload Document Error:', error);
+        res.status(500).json({ error: 'Failed to upload document', details: error.message });
+    }
+};
+
+const getDocuments = async (req, res) => {
+    try {
+        const { case_id, appointment_id, payment_id } = req.query;
+        let query = 'SELECT * FROM documents WHERE 1=1';
+        const params = [];
+
+        if (case_id) { query += ' AND case_id = ?'; params.push(case_id === undefined ? null : case_id); }
+        if (appointment_id) { query += ' AND appointment_id = ?'; params.push(appointment_id === undefined ? null : appointment_id); }
+        if (payment_id) { query += ' AND payment_id = ?'; params.push(payment_id === undefined ? null : payment_id); }
+
+        query += ' ORDER BY uploaded_at DESC';
+
+        const [rows] = await pool.execute(query, params);
+        res.json(rows);
+    } catch (error) {
+        console.error('Get Documents Error:', error);
+        res.status(500).json({ error: 'Failed to fetch documents', details: error.message });
+    }
+};
+
+const downloadDocument = async (req, res) => {
+    try {
+        const docId = req.params.id === undefined ? null : req.params.id;
+        const [rows] = await pool.execute('SELECT file_path, title FROM documents WHERE id = ?', [docId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Document not found' });
+
+        const filePath = rows[0].file_path;
+        res.download(filePath, rows[0].title);
+    } catch (error) {
+        console.error('Download Document Error:', error);
+        res.status(500).json({ error: 'Failed to download document', details: error.message });
     }
 };
 
@@ -156,61 +304,97 @@ const setLawyerAvailability = async (req, res) => {
 // CLIENT PROFILES
 const getClientProfile = async (req, res) => {
     try {
-        // Force clientId to req.user.id unless admin
-        const clientId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
+        const idParam = req.params.id;
+        const clientId = (idParam === 'me' || !idParam) ? req.user.id : idParam;
+        
+        const p_clientId = clientId === undefined ? null : clientId;
 
-        if (!clientId) return res.status(400).json({ error: 'Client ID required' });
+        if (p_clientId === null) {
+            return res.status(400).json({ error: 'Client ID required' });
+        }
 
         const [rows] = await pool.execute(`
             SELECT u.name, u.email, cp.* 
             FROM users u
             LEFT JOIN client_profiles cp ON u.id = cp.client_id
             WHERE u.id = ?
-        `, [clientId]);
+        `, [p_clientId]);
         
         if (rows.length === 0) return res.status(404).json({ error: 'Client not found' });
 
         res.json(rows[0]);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Get Client Profile Error:', error);
+        res.status(500).json({ error: 'Failed to fetch client profile', details: error.message });
     }
 };
 
 const updateClientProfile = async (req, res) => {
     try {
         console.log('Update Profile Request Body:', req.body);
-        // Force clientId to req.user.id unless admin
-        const clientId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
+        const idParam = req.params.id;
+        const clientId = (idParam === 'me' || !idParam) ? req.user.id : idParam;
 
-        const { name, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name } = req.body;
+        // Sanitize incoming data: convert empty strings to null
+        const sanitized = {};
+        Object.keys(req.body).forEach(key => {
+            sanitized[key] = req.body[key] === '' ? null : req.body[key];
+        });
+
+        const { 
+            name, phone = null, alternate_phone = null, address = null, city = null, state = null, 
+            postal_code = null, date_of_birth = null, id_number = null, gender = null, 
+            marital_status = null, occupation = null, company_name = null 
+        } = sanitized;
+
+        // Final safety map
+        const p_clientId = clientId === undefined ? null : clientId;
+        const p_name = name === undefined ? null : name;
 
         // Update name in users table if provided
-        if (name) {
-            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [name, clientId]);
+        if (p_name) {
+            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [p_name, p_clientId]);
         }
 
-        const [existing] = await pool.execute('SELECT id FROM client_profiles WHERE client_id = ?', [clientId]);
+        const [existing] = await pool.execute('SELECT id FROM client_profiles WHERE client_id = ?', [p_clientId]);
 
         if (existing.length === 0) {
+            const insertParams = [p_clientId, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name]
+                .map(val => val === undefined ? null : val);
+
             await pool.execute(
                 `INSERT INTO client_profiles 
                 (client_id, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [clientId, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name]
+                insertParams
             );
         } else {
-            await pool.execute(
-                `UPDATE client_profiles SET 
-                phone = ?, alternate_phone = ?, address = ?, city = ?, state = ?, postal_code = ?, 
-                date_of_birth = ?, id_number = ?, gender = ?, marital_status = ?, occupation = ?, company_name = ?
-                WHERE client_id = ?`,
-                [phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name, clientId]
-            );
+            const updateFields = [];
+            const updateValues = [];
+            const columns = ['phone', 'alternate_phone', 'address', 'city', 'state', 'postal_code', 'date_of_birth', 'id_number', 'gender', 'marital_status', 'occupation', 'company_name'];
+
+            columns.forEach(col => {
+                if (req.body[col] !== undefined) {
+                    updateFields.push(`${col} = ?`);
+                    updateValues.push(req.body[col] === '' ? null : req.body[col]);
+                }
+            });
+
+            if (updateFields.length > 0) {
+                updateValues.push(p_clientId);
+                const sql = `UPDATE client_profiles SET ${updateFields.join(', ')} WHERE client_id = ?`;
+                await pool.execute(sql, updateValues);
+            }
         }
 
         res.json({ message: 'Client profile updated successfully' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Client Profile Update Error:', error);
+        res.status(500).json({ 
+            error: 'Failed to update client profile', 
+            details: error.message,
+            code: error.code
+        });
     }
 };
 

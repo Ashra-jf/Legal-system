@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { authService } from '../api/authService';
 import { profileService } from '../api/profileService';
 import DashboardLayout from './DashboardLayout';
-import { Lock, User, Mail, Calendar, MapPin, CreditCard, ChevronRight, Save } from 'lucide-react';
+import { Lock, User, Mail, Calendar, MapPin, CreditCard, ChevronRight, Save, BriefcaseBusiness } from 'lucide-react';
 
 export default function ProfilePage({ user, onLogout, onNavigate }) {
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,11 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
     gender: '',
     marital_status: '',
     occupation: '',
-    company_name: ''
+    company_name: '',
+    license_number: '',
+    firm_role: '',
+    jurisdiction: '',
+    experience_years: 0
   });
 
   const [passwords, setPasswords] = useState({
@@ -91,7 +95,8 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
         onNavigate(dashRoute);
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to update profile');
+      const errorDetail = error.response?.data?.details || error.message || 'Failed to update profile';
+      toast.error(errorDetail);
     } finally {
       setLoading(false);
     }
@@ -372,6 +377,83 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
             </form>
           </CardContent>
         </Card>
+
+        {/* Professional Information Container (Lawyer Only) */}
+        {user.role === 'lawyer' && (
+          <Card className="border-none shadow-sm mb-12">
+            <CardHeader className="bg-white border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <BriefcaseBusiness className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">Professional Information</CardTitle>
+                  <CardDescription>Manage your legal credentials and experience</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 bg-white/50">
+              <form onSubmit={handleProfileUpdate} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-[#0A2342]">License Number</Label>
+                    <Input 
+                      placeholder="e.g. SL-BAR-45892"
+                      value={profileData.license_number || ''}
+                      onChange={(e) => setProfileData({...profileData, license_number: e.target.value})}
+                    />
+                    <p className="text-xs text-gray-500 italic">Example: SL-BAR-45892, UK-LAW-99231, NY-ATTY-77821</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-[#0A2342]">Role within Firm</Label>
+                    <Select 
+                      value={profileData.firm_role || ''} 
+                      onValueChange={(val) => setProfileData({...profileData, firm_role: val})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Senior Partner">Senior Partner</SelectItem>
+                        <SelectItem value="Associate">Associate</SelectItem>
+                        <SelectItem value="Paralegal">Paralegal</SelectItem>
+                        <SelectItem value="Junior Lawyer">Junior Lawyer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-[#0A2342]">Jurisdiction</Label>
+                    <Input 
+                      placeholder="e.g. Sri Lanka"
+                      value={profileData.jurisdiction || ''}
+                      onChange={(e) => setProfileData({...profileData, jurisdiction: e.target.value})}
+                    />
+                    <p className="text-xs text-gray-500 italic">Example: Sri Lanka, California, USA, England and Wales</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-[#0A2342]">Years of Experience</Label>
+                    <Input 
+                      type="number"
+                      min="0"
+                      value={profileData.experience_years || 0}
+                      onChange={(e) => setProfileData({...profileData, experience_years: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-6 border-t border-gray-100">
+                  <Button type="submit" disabled={loading} className="bg-[#0A2342] hover:bg-[#143255] text-white px-8">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Professional Details
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

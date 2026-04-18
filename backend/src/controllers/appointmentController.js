@@ -18,10 +18,10 @@ const getAppointments = async (req, res) => {
         // Filter based on role
         if (req.user && req.user.role === 'client') {
             query += ' WHERE a.client_id = ?';
-            params.push(req.user.id);
+            params.push(req.user.id === undefined ? null : req.user.id);
         } else if (req.user && req.user.role === 'lawyer') {
             query += ' WHERE a.lawyer_id = ?';
-            params.push(req.user.id);
+            params.push(req.user.id === undefined ? null : req.user.id);
         }
 
         query += ' ORDER BY a.appointment_date, a.start_time';
@@ -29,7 +29,8 @@ const getAppointments = async (req, res) => {
         const [rows] = await pool.execute(query, params);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Get Appointments Error:', error);
+        res.status(500).json({ error: 'Failed to fetch appointments', details: error.message });
     }
 };
 
