@@ -144,8 +144,34 @@ const verifyEmail = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current and new password are required' });
+        }
+
+        const [users] = await pool.execute('SELECT password_hash FROM users WHERE id = ?', [userId]);
+        if (users.length === 0) return res.status(404).json({ error: 'User not found' });
+
+        const user = users[0];
+        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isMatch) return res.status(400).json({ error: 'Incorrect current password' });
+
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+        await pool.execute('UPDATE users SET password_hash = ? WHERE id = ?', [newPasswordHash, userId]);
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = {
     register,
     login,
-    verifyEmail
+    verifyEmail,
+    changePassword
 };

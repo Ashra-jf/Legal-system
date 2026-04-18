@@ -7,6 +7,7 @@ import ServiceDetailsPage from './pages/ServiceDetailsPage';
 import ClientDashboard from './pages/ClientDashboard';
 import LawyerDashboard from './pages/LawyerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ProfilePage from './pages/ProfilePage';
 import { Toaster } from './components/ui/sonner';
 import { authService } from './api/authService';
 
@@ -95,6 +96,18 @@ function AdminDashboardWrapper() {
   return <AdminDashboard user={user} onLogout={handleLogout} onNavigate={(page) => navigate(`/${page}`)} />;
 }
 
+function ProfilePageWrapper() {
+  const navigate = useNavigate();
+  const user = authService.getCurrentUser();
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/');
+  };
+
+  return <ProfilePage user={user} onLogout={handleLogout} onNavigate={(page) => navigate(`/${page}`)} />;
+}
+
 function App() {
   return (
     <Router>
@@ -128,6 +141,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboardWrapper />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePageWrapper />
               </ProtectedRoute>
             }
           />

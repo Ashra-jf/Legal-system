@@ -60,6 +60,7 @@ export default function LawyerDashboard({ user, onLogout, onNavigate }) {
     <DashboardLayout
       user={user}
       onLogout={onLogout}
+      onNavigate={onNavigate}
       sidebar={sidebar}
       onNotificationClick={() => setCurrentView('notifications')}
       notificationCount={2}

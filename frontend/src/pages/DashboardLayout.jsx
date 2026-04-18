@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge';
 export default function DashboardLayout({
   user,
   onLogout,
+  onNavigate,
   children,
   sidebar,
   onNotificationClick,
@@ -63,6 +64,10 @@ export default function DashboardLayout({
                     <div className="text-gray-500">{user.email}</div>
                     <div className="text-xs text-[#0A2342] mt-1 capitalize">{user.role}</div>
                   </div>
+                  <DropdownMenuItem onClick={() => onNavigate('profile')} className="cursor-pointer">
+                    <User className="w-4 h-4 mr-2" />
+                    Profile
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={onLogout} className="text-red-600 cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout

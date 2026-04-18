@@ -46,6 +46,16 @@ export const authService = {
         localStorage.removeItem('user');
     },
 
+    // Change password
+    changePassword: async (passwords) => {
+        try {
+            const response = await axiosInstance.post('/auth/change-password', passwords);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
     // Get current user from localStorage
     getCurrentUser: () => {
         const user = localStorage.getItem('user');

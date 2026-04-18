@@ -41,8 +41,11 @@ const verifyValidation = [
     body('code').isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits')
 ];
 
+const { authenticateToken } = require('../middleware/authMiddleware');
+
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
 router.post('/verify-email', verifyValidation, authController.verifyEmail);
+router.post('/change-password', authenticateToken, authController.changePassword);
 
 module.exports = router;

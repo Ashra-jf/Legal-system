@@ -11,7 +11,15 @@ const getLawyerProfile = async (req, res) => {
             return res.status(400).json({ error: 'Lawyer ID required' });
         }
 
-        const [rows] = await pool.execute('SELECT * FROM vw_lawyers WHERE id = ?', [lawyerId]);
+        const [rows] = await pool.execute(`
+            SELECT u.id, u.name, u.email, u.is_active, u.created_at,
+                   lp.*,
+                   ls.rating, ls.total_cases, ls.cases_won
+            FROM users u
+            LEFT JOIN lawyer_profiles lp ON u.id = lp.lawyer_id
+            LEFT JOIN lawyer_statistics ls ON u.id = ls.lawyer_id
+            WHERE u.id = ? AND u.role = 'lawyer'
+        `, [lawyerId]);
         if (rows.length === 0) return res.status(404).json({ error: 'Lawyer not found' });
 
         res.json(rows[0]);
@@ -24,7 +32,12 @@ const updateLawyerProfile = async (req, res) => {
     try {
         const lawyerId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
 
-        const { bar_registration, license_number, experience_years, education, bio, consultation_fee, availability_status } = req.body;
+        const { name, bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status } = req.body;
+
+        // Update name in users table if provided
+        if (name) {
+            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [name, lawyerId]);
+        }
 
         // Check if lawyer profile exists
         const [existing] = await pool.execute('SELECT id FROM lawyer_profiles WHERE lawyer_id = ?', [lawyerId]);
@@ -33,17 +46,18 @@ const updateLawyerProfile = async (req, res) => {
             // Insert
             await pool.execute(
                 `INSERT INTO lawyer_profiles 
-                (lawyer_id, bar_registration, license_number, experience_years, education, bio, consultation_fee, availability_status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [lawyerId, bar_registration, license_number, experience_years, education, bio, consultation_fee, availability_status]
+                (lawyer_id, bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [lawyerId, bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status]
             );
         } else {
             // Update
             await pool.execute(
                 `UPDATE lawyer_profiles SET 
-                bar_registration = ?, license_number = ?, experience_years = ?, education = ?, bio = ?, consultation_fee = ?, availability_status = ?
+                bar_registration = ?, license_number = ?, id_number = ?, gender = ?, marital_status = ?, alternate_phone = ?, 
+                experience_years = ?, education = ?, bio = ?, consultation_fee = ?, availability_status = ?
                 WHERE lawyer_id = ?`,
-                [bar_registration, license_number, experience_years, education, bio, consultation_fee, availability_status, lawyerId]
+                [bar_registration, license_number, id_number, gender, marital_status, alternate_phone, experience_years, education, bio, consultation_fee, availability_status, lawyerId]
             );
         }
 
@@ -147,7 +161,13 @@ const getClientProfile = async (req, res) => {
 
         if (!clientId) return res.status(400).json({ error: 'Client ID required' });
 
-        const [rows] = await pool.execute('SELECT * FROM vw_clients WHERE id = ?', [clientId]);
+        const [rows] = await pool.execute(`
+            SELECT u.name, u.email, cp.* 
+            FROM users u
+            LEFT JOIN client_profiles cp ON u.id = cp.client_id
+            WHERE u.id = ?
+        `, [clientId]);
+        
         if (rows.length === 0) return res.status(404).json({ error: 'Client not found' });
 
         res.json(rows[0]);
@@ -158,26 +178,33 @@ const getClientProfile = async (req, res) => {
 
 const updateClientProfile = async (req, res) => {
     try {
+        console.log('Update Profile Request Body:', req.body);
         // Force clientId to req.user.id unless admin
         const clientId = (req.user.role === 'admin' && req.params.id) ? req.params.id : req.user.id;
 
-        const { phone, address, city, state, postal_code, date_of_birth, occupation, company_name } = req.body;
+        const { name, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name } = req.body;
+
+        // Update name in users table if provided
+        if (name) {
+            await pool.execute('UPDATE users SET name = ? WHERE id = ?', [name, clientId]);
+        }
 
         const [existing] = await pool.execute('SELECT id FROM client_profiles WHERE client_id = ?', [clientId]);
 
         if (existing.length === 0) {
             await pool.execute(
                 `INSERT INTO client_profiles 
-                (client_id, phone, address, city, state, postal_code, date_of_birth, occupation, company_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [clientId, phone, address, city, state, postal_code, date_of_birth, occupation, company_name]
+                (client_id, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [clientId, phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name]
             );
         } else {
             await pool.execute(
                 `UPDATE client_profiles SET 
-                phone = ?, address = ?, city = ?, state = ?, postal_code = ?, date_of_birth = ?, occupation = ?, company_name = ?
+                phone = ?, alternate_phone = ?, address = ?, city = ?, state = ?, postal_code = ?, 
+                date_of_birth = ?, id_number = ?, gender = ?, marital_status = ?, occupation = ?, company_name = ?
                 WHERE client_id = ?`,
-                [phone, address, city, state, postal_code, date_of_birth, occupation, company_name, clientId]
+                [phone, alternate_phone, address, city, state, postal_code, date_of_birth, id_number, gender, marital_status, occupation, company_name, clientId]
             );
         }
 
