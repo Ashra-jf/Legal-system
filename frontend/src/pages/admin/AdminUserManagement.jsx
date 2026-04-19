@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Users, Plus, Edit, Trash2 } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, User, BriefcaseBusiness } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import axiosInstance from '../../api/axiosConfig';
 
@@ -21,6 +21,10 @@ export default function AdminUserManagement() {
     password: '',
     role: '',
   });
+  const [viewingUser, setViewingUser] = useState(null);
+  const [profileDetails, setProfileDetails] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -50,6 +54,30 @@ export default function AdminUserManagement() {
       role: user.role,
     });
     setShowDialog(true);
+  };
+
+  const handleViewDetails = async (user) => {
+    setViewingUser(user);
+    setProfileDetails(null);
+    setShowViewDialog(true);
+    setViewLoading(true);
+    try {
+      if (user.role === 'admin') {
+        setProfileDetails(null);
+        setViewLoading(false);
+        return;
+      }
+      
+      const endpoint = user.role === 'client' 
+        ? `/profile/client/${user.id}` 
+        : `/profile/lawyer/${user.id}`;
+      const response = await axiosInstance.get(endpoint);
+      setProfileDetails(response.data);
+    } catch (err) {
+      toast.error('Failed to load user details');
+    } finally {
+      setViewLoading(false);
+    }
   };
 
   const handleDeleteUser = async (userId) => {
@@ -198,15 +226,30 @@ export default function AdminUserManagement() {
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditUser(user)}
-                          className="border-[#0A2342] text-[#0A2342]"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                      <div className="flex gap-3 items-center">
+                        {user.role !== 'admin' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewDetails(user)}
+                            className="w-16 border-gray-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            View
+                          </Button>
+                        )}
+                        {user.role === 'admin' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditUser(user)}
+                            className="w-16 border-[#0A2342] text-[#0A2342]"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        <div className="w-px h-6 bg-gray-300"></div>
+                        
                         <Button
                           size="sm"
                           variant="outline"
@@ -289,6 +332,116 @@ export default function AdminUserManagement() {
               className="bg-[#0A2342] text-white hover:bg-[#0A2342]/90"
             >
               {editingUser ? 'Update User' : 'Add User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View User Details Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[#0A2342]">User Profile Details</DialogTitle>
+            <DialogDescription>
+              Detailed information for {viewingUser?.name} ({viewingUser?.role})
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewLoading ? (
+            <div className="flex justify-center p-8 text-gray-500">Loading details...</div>
+          ) : viewingUser?.role === 'admin' ? (
+            <div className="flex justify-center p-8 text-gray-500">Admins do not have detailed profiles.</div>
+          ) : profileDetails ? (
+            <div className="space-y-8 py-4">
+              {/* Personal Information Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                  <div className="p-1.5 bg-green-50 rounded-md">
+                    <User className="w-4 h-4 text-green-600" />
+                  </div>
+                  <h3 className="font-semibold text-[#0A2342]">Personal Information</h3>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Full Name</Label>
+                    <p className="font-medium text-gray-900">{profileDetails.name || viewingUser?.name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Email Address</Label>
+                    <p className="font-medium text-gray-900">{profileDetails.email || viewingUser?.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Contact Number</Label>
+                    <p className="font-medium text-gray-900">{profileDetails.phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Alternate Contact</Label>
+                    <p className="font-medium text-gray-900">{profileDetails.alternate_phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Date of Birth</Label>
+                    <p className="font-medium text-gray-900">{profileDetails.date_of_birth ? new Date(profileDetails.date_of_birth).toLocaleDateString() : 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">National ID / Passport</Label>
+                    <p className="font-medium text-gray-900">{profileDetails.id_number || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Gender</Label>
+                    <p className="font-medium text-gray-900 capitalize">{profileDetails.gender || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-500 block mb-1">Marital Status</Label>
+                    <p className="font-medium text-gray-900 capitalize">{profileDetails.marital_status || 'Not provided'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-gray-500 block mb-1">Full Address</Label>
+                    <p className="font-medium text-gray-900">
+                      {[profileDetails.address, profileDetails.city, profileDetails.state, profileDetails.postal_code].filter(Boolean).join(', ') || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Professional Information Section (Lawyer Only) */}
+              {viewingUser?.role === 'lawyer' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <div className="p-1.5 bg-blue-50 rounded-md">
+                      <BriefcaseBusiness className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <h3 className="font-semibold text-[#0A2342]">Professional Information</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                    <div>
+                      <Label className="text-gray-500 block mb-1">License Number</Label>
+                      <p className="font-medium text-gray-900">{profileDetails.license_number || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500 block mb-1">Role within Firm</Label>
+                      <p className="font-medium text-gray-900">{profileDetails.firm_role || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500 block mb-1">Jurisdiction</Label>
+                      <p className="font-medium text-gray-900">{profileDetails.jurisdiction || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500 block mb-1">Years of Experience</Label>
+                      <p className="font-medium text-gray-900">{profileDetails.experience_years || 0} Years</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex justify-center p-8 text-red-500">Failed to load details.</div>
+          )}
+          
+          <DialogFooter>
+            <Button className="bg-[#0A2342] text-white hover:bg-[#143255]" onClick={() => setShowViewDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
