@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Upload, Download, FileText, CheckCircle, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { paymentService } from '../../api/paymentService';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function ClientPayments({ userId }) {
   const [payments, setPayments] = useState([]);
@@ -103,7 +105,66 @@ export default function ClientPayments({ userId }) {
   };
 
   const handleDownloadInvoice = () => {
-    toast.success('Invoice downloaded successfully');
+    if (!selectedInvoice) return;
+    
+    try {
+      const pdf = new jsPDF();
+      
+      // Header
+      pdf.setFontSize(20);
+      pdf.setTextColor(10, 35, 66); // Dark Blue (#0A2342)
+      pdf.text('DNJ Legal Firm', 20, 25);
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100); // Gray
+      pdf.text('UE Perera Mawatha', 20, 35);
+      pdf.text('Colombo, Sri Lanka', 20, 40);
+      pdf.text('+94 11 234 5678', 20, 45);
+
+      pdf.setTextColor(0, 0, 0); // Black
+      pdf.setFontSize(12);
+      pdf.text(`Invoice ID: ${selectedInvoice.invoiceId}`, 130, 25);
+      pdf.text(`Date: ${selectedInvoice.date}`, 130, 32);
+      
+      // Divider
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(20, 52, 190, 52);
+
+      // Body Details
+      pdf.setFontSize(12);
+      let startY = 65;
+      
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Service:', 20, startY);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`${selectedInvoice.service}`, 80, startY);
+      
+      startY += 12;
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Amount:', 20, startY);
+      pdf.setTextColor(10, 35, 66);
+      pdf.text(`Rs. ${selectedInvoice.amount.toLocaleString()}`, 80, startY);
+
+      startY += 12;
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Payment Method:', 20, startY);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`${selectedInvoice.paymentMethod}`, 80, startY);
+
+      startY += 12;
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Status:', 20, startY);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`${selectedInvoice.status}`, 80, startY);
+
+      // Save
+      pdf.save(`${selectedInvoice.invoiceId || 'Invoice'}.pdf`);
+      toast.success('Invoice downloaded successfully');
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error(`PDF Error: ${error.message || String(error)}`);
+    }
   };
 
   const handleViewReceipt = (payment) => {
@@ -424,7 +485,7 @@ export default function ClientPayments({ userId }) {
           </DialogHeader>
 
           {selectedInvoice && (
-            <div className="space-y-6 py-4">
+            <div id="invoice-capture-area" className="space-y-6 py-4 p-8 bg-white">
               {/* Invoice Header */}
               <div className="flex justify-between items-start border-b border-gray-200 pb-4">
                 <div>
