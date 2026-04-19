@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Bell, Send, Calendar } from 'lucide-react';
+import { Bell, Send, Calendar, FileText, CreditCard, Trash2, Loader2 } from 'lucide-react';
 import { notificationService } from '../../api/notificationService';
 import { toast } from 'sonner@2.0.3';
 
-export default function AdminNotifications() {
+export default function AdminNotifications({ userId, onRefresh }) {
   const [showDialog, setShowDialog] = useState(false);
   const [notificationForm, setNotificationForm] = useState({
     recipient: '',
@@ -20,6 +21,64 @@ export default function AdminNotifications() {
   });
 
   const [sentNotifications, setSentNotifications] = useState([]);
+  const [inbox, setInbox] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (userId) loadInbox();
+  }, [userId]);
+
+  const loadInbox = async () => {
+    try {
+      setLoading(true);
+      const data = await notificationService.getNotifications({ user_id: userId });
+      // Filter out standard client notifications (like 'appointment scheduled') for the Admin Inbox
+      // Keep only 'system' alerts or explicit cancellation broadcasts
+      const adminRelevantNotifications = data.filter(n => n.type === 'system' || n.title.includes('Cancelled'));
+      
+      const mapped = adminRelevantNotifications.map(n => ({
+        ...n,
+        read: !!n.is_read,
+        date: new Date(n.created_at).toLocaleString()
+      }));
+      setInbox(mapped);
+    } catch (error) {
+      console.error('Error loading admin inbox:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id);
+      setInbox(
+        inbox.map((notif) =>
+          notif.id === id ? { ...notif, read: true, is_read: 1 } : notif
+        )
+      );
+      if (onRefresh) onRefresh();
+    } catch(e) {
+      console.error('Failed to mark as read', e);
+    }
+  };
+  
+  const handleDeleteInbox = (id) => {
+    setInbox(inbox.filter((notif) => notif.id !== id));
+  };
+  
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'appointment':
+        return <Calendar className="w-5 h-5 text-blue-600" />;
+      case 'payment':
+        return <CreditCard className="w-5 h-5 text-green-600" />;
+      case 'case':
+        return <FileText className="w-5 h-5 text-purple-600" />;
+      default:
+        return <Bell className="w-5 h-5 text-gray-600" />;
+    }
+  };
 
   const handleSendNotification = async () => {
     if (!notificationForm.recipient || !notificationForm.subject || !notificationForm.message) {
@@ -196,31 +255,102 @@ export default function AdminNotifications() {
         </CardContent>
       </Card>
 
+      {/* System Inbox (Received Notifications) */}
+      <Card className="border-gray-200 mt-6">
+        <CardHeader>
+          <CardTitle className="text-[#0A2342]">System Inbox (Received Alerts)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="w-8 h-8 animate-spin text-[#0A2342]" />
+            </div>
+          ) : inbox.length === 0 ? (
+            <div className="text-center py-12 border rounded-lg bg-gray-50">
+              <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No received alerts</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {inbox.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`flex items-start gap-4 p-4 rounded-lg border transition-colors ${notification.read
+                    ? 'bg-white border-gray-200'
+                    : 'bg-[#E5F1FB] border-[#0A2342]/20'
+                    }`}
+                >
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                    {getNotificationIcon(notification.type)}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[#0A2342] font-semibold text-sm mb-0.5">{notification.title || 'System Alert'}</p>
+                    <p className="text-gray-900 mb-1">{notification.message}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-500 text-sm">{notification.date}</span>
+                      {!notification.read && (
+                        <Badge className="bg-[#0A2342] text-white">Unread</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 flex-shrink-0">
+                    {!notification.read && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkAsRead(notification.id)}
+                        className="border-[#0A2342] text-[#0A2342]"
+                      >
+                        Mark
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteInbox(notification.id)}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Sent Notifications History */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-[#0A2342]">Notification History</CardTitle>
+          <CardTitle className="text-[#0A2342]">Sent Notifications History</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {sentNotifications.map((notification) => (
-              <div key={notification.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-[#0A2342]">{notification.subject}</h3>
-                    <p className="text-gray-600 text-sm">To: {notification.recipient}</p>
+          {sentNotifications.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">No notifications sent during this session.</div>
+          ) : (
+            <div className="space-y-4">
+              {sentNotifications.map((notification) => (
+                <div key={notification.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="text-[#0A2342]">{notification.subject}</h3>
+                      <p className="text-gray-600 text-sm">To: {notification.recipient}</p>
+                    </div>
+                    <span className="text-gray-500 text-sm">{notification.date}</span>
                   </div>
-                  <span className="text-gray-500 text-sm">{notification.date}</span>
+                  <p className="text-gray-700 mb-2">{notification.message}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">
+                      {notification.status}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-gray-700 mb-2">{notification.message}</p>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">
-                    {notification.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -248,7 +248,7 @@ export default function ClientPayments({ userId }) {
                     <TableCell>{payment.date}</TableCell>
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>
-                      {payment.receiptUrl ? (
+                      {payment.receiptUrl && payment.status?.toLowerCase() !== 'rejected' ? (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -258,6 +258,8 @@ export default function ClientPayments({ userId }) {
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
+                      ) : payment.status?.toLowerCase() === 'rejected' ? (
+                        <span className="text-red-500 text-sm">Receipt Rejected</span>
                       ) : (
                         <span className="text-gray-400 text-sm">No receipt</span>
                       )}

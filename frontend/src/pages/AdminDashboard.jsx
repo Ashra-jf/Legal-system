@@ -37,7 +37,7 @@ export default function AdminDashboard({ user, onLogout, onNavigate }) {
       case 'feedback':
         return <AdminFeedbackReview />;
       case 'notifications':
-        return <AdminNotifications onRefresh={refresh} />;
+        return <AdminNotifications userId={user.id} onRefresh={refresh} />;
       case 'analytics':
         return <AdminAnalytics />;
       default:

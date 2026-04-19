@@ -152,7 +152,6 @@ export default function ClientAppointments({ userId }) {
                     <TableHead>Time</TableHead>
                     <TableHead>Fee</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -184,32 +183,6 @@ export default function ClientAppointments({ userId }) {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {appointment.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-[#0A2342] text-[#0A2342]"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-red-500 text-red-500 hover:bg-red-50"
-                                onClick={() => {
-                                  setSelectedAppointment(appointment);
-                                  setShowCancelDialog(true);
-                                }}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

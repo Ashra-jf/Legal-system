@@ -79,8 +79,13 @@ const createAppointment = async (req, res) => {
 
 const updateAppointmentStatus = async (req, res) => {
     try {
-        const { status } = req.body;
-        await pool.execute('UPDATE appointments SET status = ? WHERE id = ?', [status, req.params.id]);
+        const { status, cancellation_reason } = req.body;
+        
+        if (status === 'cancelled' && cancellation_reason) {
+            await pool.execute('UPDATE appointments SET status = ?, cancellation_reason = ? WHERE id = ?', [status, cancellation_reason, req.params.id]);
+        } else {
+            await pool.execute('UPDATE appointments SET status = ? WHERE id = ?', [status, req.params.id]);
+        }
 
         if (status === 'confirmed') {
             // Automatically generate a new Case
@@ -132,6 +137,36 @@ const updateAppointmentStatus = async (req, res) => {
                             [appt.client_id, req.params.id, appt.fee, appt.appointment_date, 'Online', 'pending']
                         );
                     }
+                }
+            }
+        } else if (status === 'cancelled') {
+            const [appts] = await pool.execute(`
+                SELECT a.client_id, a.lawyer_id, a.appointment_date, a.start_time, l.name as lawyer_name, c.name as client_name, s.name as service_name
+                FROM appointments a
+                LEFT JOIN users l ON a.lawyer_id = l.id
+                LEFT JOIN users c ON a.client_id = c.id
+                LEFT JOIN services s ON a.service_id = s.id
+                WHERE a.id = ?
+            `, [req.params.id]);
+            
+            if (appts.length > 0) {
+                const appt = appts[0];
+                const dateStr = new Date(appt.appointment_date).toLocaleDateString();
+                const notifyMsg = `The ${appt.service_name || 'Legal'} appointment on ${dateStr} at ${appt.start_time} was cancelled. ${cancellation_reason ? 'Reason: ' + cancellation_reason : ''}`;
+                
+                // Notify Client
+                await pool.execute(`
+                    INSERT INTO notifications (user_id, type, title, message, appointment_id, priority)
+                    VALUES (?, 'appointment', 'Appointment Cancelled', ?, ?, 'high')
+                `, [appt.client_id, notifyMsg, req.params.id]);
+                
+                // Notify all Admins
+                const [admins] = await pool.execute("SELECT id FROM users WHERE role = 'admin'");
+                for (const admin of admins) {
+                    await pool.execute(`
+                        INSERT INTO notifications (user_id, type, title, message, appointment_id, priority)
+                        VALUES (?, 'system', 'Appointment Cancelled', ?, ?, 'high')
+                    `, [admin.id, notifyMsg, req.params.id]);
                 }
             }
         }

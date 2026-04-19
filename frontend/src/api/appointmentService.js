@@ -33,9 +33,13 @@ export const appointmentService = {
     },
 
     // Update appointment status
-    updateStatus: async (id, status) => {
+    updateStatus: async (id, status, reason = null) => {
         try {
-            const response = await axiosInstance.patch(`/appointments/${id}`, { status });
+            const payload = { status };
+            if (reason) {
+                payload.cancellation_reason = reason;
+            }
+            const response = await axiosInstance.patch(`/appointments/${id}`, payload);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;

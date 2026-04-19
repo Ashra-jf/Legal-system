@@ -4,12 +4,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
 import { Calendar, User, Clock, DollarSign } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { appointmentService } from '../../api/appointmentService';
 
 export default function LawyerAppointments({ lawyerId, lawyerName }) {
   const [appointments, setAppointments] = useState([]);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [selectedApptId, setSelectedApptId] = useState(null);
 
   useEffect(() => {
     loadAppointments();
@@ -26,6 +31,13 @@ export default function LawyerAppointments({ lawyerId, lawyerName }) {
   };
 
   const handleStatusChange = async (appointmentId, newStatus) => {
+    if (newStatus === 'cancelled') {
+        setSelectedApptId(appointmentId);
+        setCancelReason('');
+        setShowCancelDialog(true);
+        return;
+    }
+
     try {
       await appointmentService.updateStatus(appointmentId, newStatus);
       toast.success(`Status updated to ${newStatus}`);
@@ -33,6 +45,23 @@ export default function LawyerAppointments({ lawyerId, lawyerName }) {
     } catch (error) {
       console.error('Failed to update status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('Please provide a reason for cancellation');
+      return;
+    }
+
+    try {
+      await appointmentService.updateStatus(selectedApptId, 'cancelled', cancelReason);
+      toast.success('Appointment cancelled successfully');
+      setShowCancelDialog(false);
+      loadAppointments();
+    } catch (error) {
+      console.error('Failed to cancel appointment:', error);
+      toast.error('Failed to cancel appointment');
     }
   };
 
@@ -179,6 +208,37 @@ export default function LawyerAppointments({ lawyerId, lawyerName }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Cancel Appointment Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Appointment</DialogTitle>
+            <DialogDescription>
+                Please provide a reason for cancelling this appointment. This reason will be sent to the client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Reason for Cancellation</Label>
+              <textarea
+                className="w-full min-h-[100px] p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Type your reason here..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Back
+            </Button>
+            <Button onClick={handleConfirmCancel} className="bg-red-600 hover:bg-red-700 text-white">
+              Confirm Cancellation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

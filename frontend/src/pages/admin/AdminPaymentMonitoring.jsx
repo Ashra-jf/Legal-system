@@ -15,12 +15,19 @@ export default function AdminPaymentMonitoring() {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
 
   React.useEffect(() => {
-    loadPayments();
+    loadPayments(true);
+
+    // Setup background polling every 10 seconds
+    const interval = setInterval(() => {
+      loadPayments(false);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const loadPayments = async () => {
+  const loadPayments = async (showSpinner = true) => {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       const data = await paymentService.getPayments();
       // map to match UI fields
       setPayments(data.map(p => ({
@@ -39,9 +46,10 @@ export default function AdminPaymentMonitoring() {
       })));
     } catch(e) {
       console.error(e);
-      toast.error('Failed to view payments');
+      // Suppress silent errors to prevent toast spam during background polling
+      if (showSpinner) toast.error('Failed to view payments');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
@@ -309,15 +317,15 @@ export default function AdminPaymentMonitoring() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex w-full sm:justify-between">
             <Button variant="outline" onClick={() => setShowReceiptDialog(false)}>
               Close
             </Button>
-            {selectedPayment?.status === 'Pending Verification' && (
-              <>
+            {selectedPayment?.status === 'Pending Verification' ? (
+              <div className="flex gap-2">
                 <Button
-                  variant="destructive"
                   onClick={handleRejectPayment}
+                  variant="destructive"
                   className="bg-red-600 hover:bg-red-700"
                 >
                   <XCircle className="w-4 h-4 mr-2" />
@@ -325,13 +333,13 @@ export default function AdminPaymentMonitoring() {
                 </Button>
                 <Button
                   onClick={handleApprovePayment}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve & Update Payment
+                  Approve & Verify
                 </Button>
-              </>
-            )}
+              </div>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>
