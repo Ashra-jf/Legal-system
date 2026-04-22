@@ -5,7 +5,7 @@ const createUser = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
 
-        if (!name || !email || !password || !role) {
+        if (!name || !email || !password || !role) {     //Validation
             return res.status(400).json({ error: 'Name, email, password and role are required' });
         }
 

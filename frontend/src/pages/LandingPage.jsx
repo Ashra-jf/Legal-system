@@ -142,7 +142,7 @@ export default function LandingPage({ onNavigate }) {
               <h1 className="text-white mb-6">
                 Your Trusted Partner for Legal Services
               </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto md:mx-0">
+              <p className="text-xl text-white-600 mb-8 max-w-2xl mx-auto md:mx-0">
                 At DNJ Legal Firm, we provide comprehensive legal solutions tailored to your needs.
                 Our experienced team is committed to delivering professional services with integrity and excellence.
               </p>

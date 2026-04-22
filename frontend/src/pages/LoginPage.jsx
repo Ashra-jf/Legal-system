@@ -1,3 +1,4 @@
+// login component that handles user authentication and password recovery
 import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,9 +9,13 @@ import { Scale, AlertCircle, CheckCircle } from 'lucide-react';
 import { authService } from '../api/authService';
 
 export default function LoginPage({ onNavigate, onLogin }) {
+  // --- Form State Management ---
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  // --- Password Reset Flow State ---
+  // Controls the multi-step dialog for resetting forgotten passwords
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetStep, setResetStep] = useState('email');
@@ -18,6 +23,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
+  // Handles the primary login form submission
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -35,6 +41,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
     }
   };
 
+  // Manages the multi-step password reset process (Email verification -> Code -> New Password)
   const handleForgotPasswordSubmit = () => {
     if (resetStep === 'email') {
       // Check if email exists
@@ -46,6 +53,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
         return;
       }
 
+      // In a real app, an API call would trigger an email. For now, we mock it.
       // Mock reset code (in reality, this would be sent via email)
       localStorage.setItem('resetCode', '123456');
       setResetStep('code');
@@ -98,7 +106,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
 
   return (
     <div className="min-h-screen bg-[#E5F1FB] flex flex-col">
-      {/* Header */}
+      {/* Branding Header with Navigation back to Landing */}
       <div className="bg-white border-b border-gray-200 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
@@ -117,7 +125,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
         </div>
       </div>
 
-      {/* Login Form */}
+      {/* Primary Login Form Container */}
       <div className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-lg">
@@ -190,7 +198,7 @@ export default function LoginPage({ onNavigate, onLogin }) {
         </div>
       </div>
 
-      {/* Forgot Password Dialog */}
+      {/* Password Recovery Modal - Conditionally rendered based on resetStep state */}
       <Dialog open={showForgotPassword} onOpenChange={(open) => {
         setShowForgotPassword(open);
         if (!open) resetForgotPasswordForm();

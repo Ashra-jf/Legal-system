@@ -353,7 +353,7 @@ export default function ProfilePage({ user, onLogout, onNavigate }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>State</Label>
+                  <Label>Province</Label>
                   <Input 
                     value={profileData.state || ''}
                     onChange={(e) => setProfileData({...profileData, state: e.target.value})}

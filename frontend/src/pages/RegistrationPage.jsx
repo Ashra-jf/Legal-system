@@ -1,3 +1,4 @@
+// Component for new client registration, including email verification logic
 import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,6 +9,7 @@ import { Scale, CheckCircle, AlertCircle } from 'lucide-react';
 import { authService } from '../api/authService';
 
 export default function RegistrationPage({ onNavigate }) {
+  // Holds all user input for the registration form
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -21,6 +23,7 @@ export default function RegistrationPage({ onNavigate }) {
   const [verificationCode, setVerificationCode] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
 
+  // Local validation logic to ensure data integrity before API calls
   const validateForm = () => {
     const newErrors = {};
 
@@ -60,6 +63,7 @@ export default function RegistrationPage({ onNavigate }) {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Step 1: Submit the main registration form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
@@ -84,6 +88,7 @@ export default function RegistrationPage({ onNavigate }) {
     }
   };
 
+  // Step 2: Handle the 6-digit OTP verification process
   const handleVerifyEmail = async (e) => {
     e.preventDefault();
     setApiError('');
@@ -107,6 +112,7 @@ export default function RegistrationPage({ onNavigate }) {
     }
   };
 
+  // Updates form state and clears error messages on the fly as user types
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error for this field
@@ -121,7 +127,7 @@ export default function RegistrationPage({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-[#E5F1FB] flex flex-col">
-      {/* Header */}
+      {/* Basic Navigation Header */}
       <div className="bg-white border-b border-gray-200 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
@@ -131,7 +137,7 @@ export default function RegistrationPage({ onNavigate }) {
         </div>
       </div>
 
-      {/* Registration Form */}
+      {/* Registration / Verification Form Area */}
       <div className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-lg">
@@ -156,6 +162,7 @@ export default function RegistrationPage({ onNavigate }) {
               </Alert>
             )}
 
+            {/* The UI toggles between the initial sign-up form and the OTP verification screen */}
             {isVerifying ? (
               <form onSubmit={handleVerifyEmail} className="space-y-5">
                 <div className="text-center mb-6">
